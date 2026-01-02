@@ -11,7 +11,11 @@ app = FastAPI()
 # ADD VERCEL URL AFTER FRONTEND IS DEPLOYED
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server
+        "https://anki-automation-psi.vercel.app"
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,6 +23,11 @@ app.add_middleware(
 
 class PingRequest(BaseModel):
     message: str
+
+@app.get("/ping")
+def ping():
+    return {"status": "ok"}
+
 
 @app.post("/ping")
 def ping(req: PingRequest):

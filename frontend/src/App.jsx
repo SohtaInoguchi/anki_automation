@@ -3,8 +3,10 @@ import { useState } from "react";
 function App() {
   const [response, setResponse] = useState("");
 
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
   const pingBackend = async () => {
-    const res = await fetch("http://localhost:8000/ping", {
+    const res = await fetch(`${API_BASE}/ping`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
