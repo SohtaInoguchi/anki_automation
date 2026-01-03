@@ -53,7 +53,8 @@ def download_image(query, filename):
 
 for word in english_words:
     fr = translate_word(word, "EN", "FR")
+    img_filename = f"{word}.jpeg"
+    download_image(word, img_filename)
     data.append(fr)
 
-download_image("cat", "cat.jpeg")
 print("image file created")
