@@ -8,7 +8,6 @@ from pydantic import BaseModel
 app = FastAPI()
 
 # ---- CORS (required for browser requests) ----
-# ADD VERCEL URL AFTER FRONTEND IS DEPLOYED
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
