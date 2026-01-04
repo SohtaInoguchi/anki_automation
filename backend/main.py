@@ -22,6 +22,11 @@ app.add_middleware(
 class PingRequest(BaseModel):
     message: str
 
+class GenerateCardsRequest(BaseModel):
+    words: list[str]
+    source: str = "EN"
+    target: str = "FR"
+
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
@@ -32,3 +37,19 @@ def ping(req: PingRequest):
     return {
         "reply": f"Backend received: {req.message}"
     }
+
+
+@app.post("/generate-cards")
+def generate_cards(req: GenerateCardsRequest):
+    """Generate Anki cards with translations and images."""
+    try:
+        cards = generate_anki_cards(req.words, source=req.source, target=req.target)
+        return {
+            "success": True,
+            "cards": cards
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
