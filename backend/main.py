@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from backend.anki_automation import generate_anki_cards
+from anki_automation import generate_anki_cards
 
 
 app = FastAPI()
