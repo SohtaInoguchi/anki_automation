@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from anki_automation import generate_anki_cards
+import os
+from anki_automation import generate_anki_cards, _default_image_dir
 
 
 app = FastAPI()
@@ -53,3 +55,9 @@ def generate_cards(req: GenerateCardsRequest):
             "success": False,
             "error": str(e)
         }
+
+
+# Serve static images
+image_dir = _default_image_dir()
+os.makedirs(image_dir, exist_ok=True)
+app.mount("/images", StaticFiles(directory=image_dir), name="images")
