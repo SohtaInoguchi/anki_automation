@@ -47,14 +47,29 @@ function App() {
     }
   };
 
-  const downloadImage = (imageFile) => {
+  const downloadImage = async (imageFile) => {
     if (!imageFile) return;
-    const filename = imageFile.split("/").pop();
-    const url = `${API_BASE}/images/${filename}`;
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
+    try {
+      const filename = imageFile.split("/").pop();
+      const url = `${API_BASE}/images/${filename}`;
+      
+      // Fetch the image as a blob
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch image");
+      const blob = await res.blob();
+      
+      // Create a blob URL and download
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      alert(`Download failed: ${error.message}`);
+    }
   };
 
   return (
