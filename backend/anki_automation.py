@@ -132,8 +132,8 @@ def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_c
             for card in cards:
                 image_filename = os.path.basename(card["image"]) if card["image"] else ""
                 writer.writerow([
-                    card["word"],
                     card["translation"],
+                    card["word"],
                     "",  # Blank column
                     image_filename,
                     ""   # Blank column
