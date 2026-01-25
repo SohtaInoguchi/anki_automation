@@ -115,8 +115,8 @@ def generate_anki_cards(english_words: List[str], source: str = "EN", target: st
 
 
 def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_cards.csv") -> str:
-    """Export generated cards to CSV file with columns:
-    word | translation | Blank | image_filename | Blank
+    """Export generated cards to CSV file with headers:
+    Text for front of card | Text for back of card | List of tags, comma separated | File name for image on front of card | File name for image on back of card
     
     Returns the filepath of the created CSV file.
     """
@@ -128,7 +128,16 @@ def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_c
         with open(csv_filepath, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             
-            # Write data rows (no header)
+            # Write header row
+            writer.writerow([
+                "Text for front of card",
+                "Text for back of card",
+                "List of tags, comma separated",
+                "File name for image on front of card",
+                "File name for image on back of card"
+            ])
+            
+            # Write data rows
             for card in cards:
                 image_filename = os.path.basename(card["image"]) if card["image"] else ""
                 writer.writerow([
