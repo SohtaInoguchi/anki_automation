@@ -66,7 +66,7 @@ def download_image(query: str, filename: str, image_dir: str = ".") -> str:
         return ""
 
 
-def generate_audio(text: str, filename: str, lang: str = 'en', audio_dir: str = ".") -> str:
+def generate_audio(text: str, filename: str, lang: str, audio_dir: str = ".") -> str:
     """Generate MP3 audio for `text` using gTTS and save to `audio_dir/filename`.
     Returns the saved filepath or empty string on failure.
     """
