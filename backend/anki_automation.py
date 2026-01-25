@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import csv
 import deepl
 from serpapi import GoogleSearch
 import requests
@@ -111,6 +112,45 @@ def generate_anki_cards(english_words: List[str], source: str = "EN", target: st
         })
 
     return results
+
+
+def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_cards.csv") -> str:
+    """Export generated cards to CSV file with headers:
+    Text for front of card | Text for back of card | List of tags, comma separated | File name for image on front of card | File name for image on back of card
+    
+    Returns the filepath of the created CSV file.
+    """
+    try:
+        # Create directory if it doesn't exist
+        csv_dir = os.path.dirname(csv_filepath) or "."
+        os.makedirs(csv_dir, exist_ok=True)
+        
+        with open(csv_filepath, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            
+            # Write header row
+            writer.writerow([
+                "Text for front of card",
+                "Text for back of card",
+                "List of tags, comma separated",
+                "File name for image on front of card",
+                "File name for image on back of card"
+            ])
+            
+            # Write data rows
+            for card in cards:
+                image_filename = os.path.basename(card["image"]) if card["image"] else ""
+                writer.writerow([
+                    card["translation"],
+                    card["word"],
+                    "",  # Blank column
+                    image_filename,
+                    ""   # Blank column
+                ])
+        
+        return csv_filepath
+    except Exception as e:
+        raise RuntimeError(f"Failed to export cards to CSV: {e}")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
-from anki_automation import generate_anki_cards, _default_image_dir
+from anki_automation import generate_anki_cards, export_cards_to_csv, _default_image_dir
 
 
 app = FastAPI()
@@ -46,9 +46,16 @@ def generate_cards(req: GenerateCardsRequest):
     """Generate Anki cards with translations and images."""
     try:
         cards = generate_anki_cards(req.words, source=req.source, target=req.target)
+        
+        # Generate CSV file
+        image_dir = _default_image_dir()
+        csv_filepath = os.path.join(image_dir, "anki_cards.csv")
+        export_cards_to_csv(cards, csv_filepath)
+        
         return {
             "success": True,
-            "cards": cards
+            "cards": cards,
+            "csv_file": "anki_cards.csv"
         }
     except Exception as e:
         return {

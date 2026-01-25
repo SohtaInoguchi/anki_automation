@@ -5,6 +5,7 @@ function App() {
   const [words, setWords] = useState("cat, dog, school");
   const [loading, setLoading] = useState(false);
   const [cards, setCards] = useState([]);
+  const [csvFile, setCsvFile] = useState(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -36,6 +37,7 @@ function App() {
       const data = await res.json();
       if (data.success) {
         setCards(data.cards);
+        setCsvFile(data.csv_file);
         setResponse(`Successfully generated ${data.cards.length} cards!`);
       } else {
         setResponse(`Error: ${data.error}`);
@@ -69,6 +71,27 @@ function App() {
       window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       alert(`Download failed: ${error.message}`);
+    }
+  };
+
+  const downloadCsv = async () => {
+    if (!csvFile) return;
+    try {
+      const url = `${API_BASE}/images/${csvFile}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch CSV");
+      const blob = await res.blob();
+      
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = csvFile;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      alert(`CSV download failed: ${error.message}`);
     }
   };
 
@@ -108,6 +131,15 @@ function App() {
       {cards.length > 0 && (
         <div>
           <h2>Generated Cards</h2>
+          
+          {csvFile && (
+            <div style={{ marginBottom: 15 }}>
+              <button onClick={downloadCsv} style={{ backgroundColor: "#4CAF50", color: "white", padding: "10px 15px", cursor: "pointer" }}>
+                Download CSV
+              </button>
+            </div>
+          )}
+
           <table
             style={{
               borderCollapse: "collapse",
