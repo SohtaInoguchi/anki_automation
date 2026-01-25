@@ -203,7 +203,7 @@ function App() {
                   <td style={{ border: "1px solid #ccc", padding: 8 }}>
                     {card.audio_front ? (
                       <button onClick={() => downloadAudio(card.audio_front)}>
-                        Download {card.word}_en.mp3
+                        Download {card.audio_front.split('/').pop()}
                       </button>
                     ) : (
                       "No audio"
@@ -212,7 +212,7 @@ function App() {
                   <td style={{ border: "1px solid #ccc", padding: 8 }}>
                     {card.audio_back ? (
                       <button onClick={() => downloadAudio(card.audio_back)}>
-                        Download {card.word}_fr.mp3
+                        Download {card.audio_back.split('/').pop()}
                       </button>
                     ) : (
                       "No audio"
