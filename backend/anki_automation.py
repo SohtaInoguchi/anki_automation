@@ -133,11 +133,11 @@ def generate_anki_cards(english_words: List[str], source: str = "EN", target: st
         image_filename = f"{word}.jpeg"
         image_path = download_image(word, image_filename, image_dir=image_dir)
 
-        audio_front_filename = f"{word}_en.mp3"
-        audio_front_path = generate_audio(word, audio_front_filename, lang='en', audio_dir=audio_dir)
+        audio_front_filename = f"{word}_fr.mp3"
+        audio_front_path = generate_audio(word, audio_front_filename, lang='fr', audio_dir=audio_dir)
 
-        audio_back_filename = f"{word}_fr.mp3"
-        audio_back_path = generate_audio(translation, audio_back_filename, lang='fr', audio_dir=audio_dir)
+        audio_back_filename = f"{word}_en.mp3"
+        audio_back_path = generate_audio(translation, audio_back_filename, lang='en', audio_dir=audio_dir)
 
         results.append({
             "word": word,
