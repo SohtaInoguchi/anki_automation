@@ -74,6 +74,31 @@ function App() {
     }
   };
 
+  const downloadAudio = async (audioFile) => {
+    if (!audioFile) return;
+    try {
+      const filename = audioFile.split("/").pop();
+      const url = `${API_BASE}/audio/${filename}`;
+      
+      // Fetch the audio as a blob
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch audio");
+      const blob = await res.blob();
+      
+      // Create a blob URL and download
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      alert(`Download failed: ${error.message}`);
+    }
+  };
+
   const downloadCsv = async () => {
     if (!csvFile) return;
     try {
@@ -153,6 +178,8 @@ function App() {
                   Translation
                 </th>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>Image</th>
+                <th style={{ border: "1px solid #ccc", padding: 8 }}>Audio Front</th>
+                <th style={{ border: "1px solid #ccc", padding: 8 }}>Audio Back</th>
               </tr>
             </thead>
             <tbody>
@@ -171,6 +198,24 @@ function App() {
                       </button>
                     ) : (
                       "No image"
+                    )}
+                  </td>
+                  <td style={{ border: "1px solid #ccc", padding: 8 }}>
+                    {card.audio_front ? (
+                      <button onClick={() => downloadAudio(card.audio_front)}>
+                        Download {card.audio_front.split('/').pop()}
+                      </button>
+                    ) : (
+                      "No audio"
+                    )}
+                  </td>
+                  <td style={{ border: "1px solid #ccc", padding: 8 }}>
+                    {card.audio_back ? (
+                      <button onClick={() => downloadAudio(card.audio_back)}>
+                        Download {card.audio_back.split('/').pop()}
+                      </button>
+                    ) : (
+                      "No audio"
                     )}
                   </td>
                 </tr>

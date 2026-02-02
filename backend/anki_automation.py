@@ -3,6 +3,7 @@ import os
 import csv
 import deepl
 from serpapi import GoogleSearch
+from gtts import gTTS
 import requests
 from typing import List, Dict
 
@@ -65,6 +66,20 @@ def download_image(query: str, filename: str, image_dir: str = ".") -> str:
         return ""
 
 
+def generate_audio(text: str, filename: str, lang: str, audio_dir: str = ".") -> str:
+    """Generate MP3 audio for `text` using gTTS and save to `audio_dir/filename`.
+    Returns the saved filepath or empty string on failure.
+    """
+    try:
+        tts = gTTS(text, lang=lang)
+        os.makedirs(audio_dir, exist_ok=True)
+        path = os.path.join(audio_dir, filename)
+        tts.save(path)
+        return path
+    except Exception:
+        return ""
+
+
 def _is_running_on_render() -> bool:
     """Detect if running in Render by checking common Render env vars."""
     render_env_vars = [
@@ -87,13 +102,26 @@ def _default_image_dir() -> str:
     return os.path.join(os.getcwd(), "images")
 
 
-def generate_anki_cards(english_words: List[str], source: str = "EN", target: str = "FR", image_dir: str | None = None) -> List[Dict[str, str]]:
-    """Generate translations and download images for a list of English words.
+def _default_audio_dir() -> str:
+    """Return a sensible default audio directory depending on environment.
 
-    Returns a list of dicts: {"word": ..., "translation": ..., "image": <filepath or "">}
+    - On Render use `/tmp/anki_audio` (writable ephemeral storage).
+    - Locally use a project-relative `audio` folder.
+    """
+    if _is_running_on_render():
+        return "/tmp/anki_audio"
+    return os.path.join(os.getcwd(), "audio")
+
+
+def generate_anki_cards(english_words: List[str], source: str = "EN", target: str = "FR", image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
+    """Generate translations, download images, and generate audio for a list of English words.
+
+    Returns a list of dicts: {"word": ..., "translation": ..., "image": <filepath or "">, "audio_front": <filepath or "">, "audio_back": <filepath or "">}
     """
     if image_dir is None:
         image_dir = _default_image_dir()
+    if audio_dir is None:
+        audio_dir = _default_audio_dir()
 
     results = []
     for word in english_words:
@@ -105,10 +133,18 @@ def generate_anki_cards(english_words: List[str], source: str = "EN", target: st
         image_filename = f"{word}.jpeg"
         image_path = download_image(word, image_filename, image_dir=image_dir)
 
+        audio_front_filename = f"{(translation or word).replace(' ', '_').replace('/', '_')}_fr.mp3"
+        audio_front_path = generate_audio(translation, audio_front_filename, lang='fr', audio_dir=audio_dir)
+
+        audio_back_filename = f"{word.replace(' ', '_').replace('/', '_')}_en.mp3"
+        audio_back_path = generate_audio(word, audio_back_filename, lang='en', audio_dir=audio_dir)
+
         results.append({
             "word": word,
             "translation": translation,
             "image": image_path,
+            "audio_front": audio_front_path,
+            "audio_back": audio_back_path,
         })
 
     return results
@@ -116,7 +152,7 @@ def generate_anki_cards(english_words: List[str], source: str = "EN", target: st
 
 def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_cards.csv") -> str:
     """Export generated cards to CSV file with headers:
-    Text for front of card | Text for back of card | List of tags, comma separated | File name for image on front of card | File name for image on back of card
+    Text for front of card |Text for back of card | List of tags, comma separated | File name for image on front of card | File name for image on back of card | File name of audio file for front of card | File name of audio file for back of card
     
     Returns the filepath of the created CSV file.
     """
@@ -134,18 +170,24 @@ def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_c
                 "Text for back of card",
                 "List of tags, comma separated",
                 "File name for image on front of card",
-                "File name for image on back of card"
+                "File name for image on back of card",
+                "File name of audio file for front of card",
+                "File name of audio file for back of card"
             ])
             
             # Write data rows
             for card in cards:
                 image_filename = os.path.basename(card["image"]) if card["image"] else ""
+                audio_front_filename = os.path.basename(card["audio_front"]) if card["audio_front"] else ""
+                audio_back_filename = os.path.basename(card["audio_back"]) if card["audio_back"] else ""
                 writer.writerow([
                     card["translation"],
                     card["word"],
-                    "",  # Blank column
+                    "",  # Blank column for tags
                     image_filename,
-                    ""   # Blank column
+                    "",  # Blank column for back image
+                    audio_front_filename,
+                    audio_back_filename
                 ])
         
         return csv_filepath
@@ -158,3 +200,5 @@ if __name__ == "__main__":
     sample_words = ["cat", "dog", "school"]
     cards = generate_anki_cards(sample_words)
     print(f"Generated {len(cards)} cards")
+    csv_path = export_cards_to_csv(cards)
+    print(f"Exported to {csv_path}")

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
-from anki_automation import generate_anki_cards, export_cards_to_csv, _default_image_dir
+from anki_automation import generate_anki_cards, export_cards_to_csv, _default_image_dir, _default_audio_dir
 
 
 app = FastAPI()
@@ -68,3 +68,8 @@ def generate_cards(req: GenerateCardsRequest):
 image_dir = _default_image_dir()
 os.makedirs(image_dir, exist_ok=True)
 app.mount("/images", StaticFiles(directory=image_dir), name="images")
+
+# Serve static audio
+audio_dir = _default_audio_dir()
+os.makedirs(audio_dir, exist_ok=True)
+app.mount("/audio", StaticFiles(directory=audio_dir), name="audio")
