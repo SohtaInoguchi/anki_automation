@@ -1,8 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import os
+import io
+import zipfile
+import glob
+from typing import List
 from anki_automation import generate_anki_cards, export_cards_to_csv, _default_image_dir, _default_audio_dir
 
 
@@ -73,3 +78,28 @@ app.mount("/images", StaticFiles(directory=image_dir), name="images")
 audio_dir = _default_audio_dir()
 os.makedirs(audio_dir, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=audio_dir), name="audio")
+
+@app.get("/download-assets")
+def download_assets():
+    """Download all generated images and audio as a zip file."""
+    # Collect files
+    files_to_add = []
+    # images (*.jpeg, *.jpg)
+    for pattern in ("*.jpeg", "*.jpg"):
+        files_to_add.extend(glob.glob(os.path.join(image_dir, pattern)))
+    # audio (*.mp3)
+    files_to_add.extend(glob.glob(os.path.join(audio_dir, "*.mp3")))
+    # include CSV if present
+    csv_path = os.path.join(image_dir, "anki_cards.csv")
+    if os.path.exists(csv_path):
+        files_to_add.append(csv_path)
+
+    # Create in-memory zip
+    mem = io.BytesIO()
+    with zipfile.ZipFile(mem, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for path in files_to_add:
+            arcname = os.path.basename(path)
+            # All files are stored at the root of the zip (no extra folders)
+            zf.write(path, arcname=arcname)
+    mem.seek(0)
+    return StreamingResponse(mem, media_type="application/zip", headers={"Content-Disposition": "attachment; filename=anki_assets.zip"})
