@@ -120,6 +120,25 @@ function App() {
     }
   };
 
+  const downloadAllAssets = async () => {
+    try {
+      const url = `${API_BASE}/download-assets`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to download zip");
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = "anki_assets.zip";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      alert(`Download failed: ${error.message}`);
+    }
+  };
+
   return (
     <div style={{ padding: 20 }}>
       <h1>Anki Card Generator</h1>
@@ -161,6 +180,9 @@ function App() {
             <div style={{ marginBottom: 15 }}>
               <button onClick={downloadCsv} style={{ backgroundColor: "#4CAF50", color: "white", padding: "10px 15px", cursor: "pointer" }}>
                 Download CSV
+              </button>
+              <button onClick={downloadAllAssets} style={{ marginLeft: 10, backgroundColor: "#2196F3", color: "white", padding: "10px 15px", cursor: "pointer" }}>
+                Download All Assets (ZIP)
               </button>
             </div>
           )}
