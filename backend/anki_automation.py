@@ -28,9 +28,11 @@ def translate_word(word: str, source: str = "EN", target: str = "FR") -> str:
     return str(result)
 
 
-def download_image(query: str, filename: str, image_dir: str = ".") -> str:
+def download_image(query: str, filename: str, image_dir: str = ".", search_lang: str | None = None) -> str:
     """Download first image for `query` using SerpAPI and save to `image_dir/filename`.
-    Returns the saved filepath or empty string on failure.
+    If `search_lang` is provided (e.g. 'FR'), the SerpAPI `lr` parameter will be set to
+    `lang_<lang>` to bias results toward that language. Returns the saved filepath or
+    empty string on failure.
     """
     api_key = SERP_API_KEY
     if not api_key:
@@ -42,6 +44,9 @@ def download_image(query: str, filename: str, image_dir: str = ".") -> str:
         "ijn": "0",
         "api_key": api_key,
     }
+    if search_lang:
+        params["lr"] = f"lang_{search_lang.lower()}"
+
     search = GoogleSearch(params)
     results = search.get_dict()
     try:
@@ -114,7 +119,7 @@ def _default_audio_dir() -> str:
 
 
 def generate_anki_cards(english_words: List[str], source: str = "EN", target: str = "FR", image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
-    """Generate translations, download images, and generate audio for a list of English words.
+    """Generate translations, download images (searched using the target-language translation), and generate audio for a list of English words.
 
     Returns a list of dicts: {"word": ..., "translation": ..., "image": <filepath or "">, "audio_front": <filepath or "">, "audio_back": <filepath or "">}
     """
@@ -130,8 +135,11 @@ def generate_anki_cards(english_words: List[str], source: str = "EN", target: st
         except Exception:
             translation = ""
 
-        image_filename = f"{word}.jpeg"
-        image_path = download_image(word, image_filename, image_dir=image_dir)
+        # Use the translated term (target language) for searching but keep the
+        # saved filename in the source language to make file mapping obvious.
+        search_term = translation or word
+        image_filename = f"{word.replace(' ', '_').replace('/', '_')}.jpeg"
+        image_path = download_image(search_term, image_filename, image_dir=image_dir, search_lang=target)
 
         audio_front_filename = f"{(translation or word).replace(' ', '_').replace('/', '_')}_fr.mp3"
         audio_front_path = generate_audio(translation, audio_front_filename, lang='fr', audio_dir=audio_dir)
