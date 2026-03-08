@@ -201,7 +201,7 @@ function App() {
               checked={wordsInTargetLang} 
               onChange={(e) => setWordsInTargetLang(e.target.checked)}
             />
-            <strong style={{ marginLeft: 8 }}>Words are in target language</strong>
+            <strong style={{ marginLeft: 8 }}>Check if words are in language you want to learn</strong>
           </label>
           <p style={{ fontSize: 12, color: "#666", marginTop: 5 }}>
             {wordsInTargetLang 
