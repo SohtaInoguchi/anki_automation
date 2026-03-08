@@ -6,6 +6,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [cards, setCards] = useState([]);
   const [csvFile, setCsvFile] = useState(null);
+  const [targetLanguage, setTargetLanguage] = useState("FR");
+  const [learningLanguage, setLearningLanguage] = useState("EN");
+  const [wordsInTargetLang, setWordsInTargetLang] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -31,7 +34,12 @@ function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ words: wordList }),
+        body: JSON.stringify({ 
+          words: wordList,
+          target_language: targetLanguage,
+          learning_language: learningLanguage,
+          words_in_target_lang: wordsInTargetLang
+        }),
       });
 
       const data = await res.json();
@@ -167,6 +175,42 @@ function App() {
           />
         </label>
         <br />
+        <br />
+
+        <div style={{ marginBottom: 15 }}>
+          <label>
+            <strong>Language you want to learn:</strong>
+            <select value={targetLanguage} onChange={(e) => setTargetLanguage(e.target.value)}>
+              <option value="EN">English</option>
+              <option value="FR">French</option>
+            </select>
+          </label>
+          <label style={{ marginLeft: 20 }}>
+            <strong>Language you learn in:</strong>
+            <select value={learningLanguage} onChange={(e) => setLearningLanguage(e.target.value)}>
+              <option value="EN">English</option>
+              <option value="FR">French</option>
+            </select>
+          </label>
+        </div>
+
+        <div style={{ marginBottom: 15 }}>
+          <label>
+            <input 
+              type="checkbox" 
+              checked={wordsInTargetLang} 
+              onChange={(e) => setWordsInTargetLang(e.target.checked)}
+            />
+            <strong style={{ marginLeft: 8 }}>Words are in target language</strong>
+          </label>
+          <p style={{ fontSize: 12, color: "#666", marginTop: 5 }}>
+            {wordsInTargetLang 
+              ? `Your words will be translated to ${learningLanguage === "EN" ? "English" : "French"}` 
+              : `Your words will be translated to ${targetLanguage === "EN" ? "English" : "French"}`
+            }
+          </p>
+        </div>
+
         <button onClick={generateCards} disabled={loading}>
           {loading ? "Generating..." : "Generate Cards"}
         </button>
@@ -195,9 +239,11 @@ function App() {
           >
             <thead>
               <tr style={{ backgroundColor: "#f0f0f0" }}>
-                <th style={{ border: "1px solid #ccc", padding: 8 }}>Word</th>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>
-                  Translation
+                  Front ({targetLanguage === "EN" ? "English" : "French"})
+                </th>
+                <th style={{ border: "1px solid #ccc", padding: 8 }}>
+                  Back ({learningLanguage === "EN" ? "English" : "French"})
                 </th>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>Image</th>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>Audio Front</th>
@@ -208,15 +254,15 @@ function App() {
               {cards.map((card, idx) => (
                 <tr key={idx}>
                   <td style={{ border: "1px solid #ccc", padding: 8 }}>
-                    {card.word}
+                    {card.front_text}
                   </td>
                   <td style={{ border: "1px solid #ccc", padding: 8 }}>
-                    {card.translation}
+                    {card.back_text}
                   </td>
                   <td style={{ border: "1px solid #ccc", padding: 8 }}>
                     {card.image ? (
                       <button onClick={() => downloadImage(card.image)}>
-                        Download {card.word}.jpeg
+                        Download {card.image.split('/').pop()}
                       </button>
                     ) : (
                       "No image"

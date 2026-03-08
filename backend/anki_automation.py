@@ -118,38 +118,64 @@ def _default_audio_dir() -> str:
     return os.path.join(os.getcwd(), "audio")
 
 
-def generate_anki_cards(english_words: List[str], source: str = "EN", target: str = "FR", image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
-    """Generate translations, download images (searched using the target-language translation), and generate audio for a list of English words.
-
-    Returns a list of dicts: {"word": ..., "translation": ..., "image": <filepath or "">, "audio_front": <filepath or "">, "audio_back": <filepath or "">}
+def generate_anki_cards(words_input: List[str], target_language: str = "FR", learning_language: str = "EN", words_in_target_lang: bool = False, image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
+    """Generate translations, download images, and generate audio for flashcards.
+    
+    Args:
+        words_input: List of words to create cards from
+        target_language: Language the user is learning (e.g., "FR" for French)
+        learning_language: Language the user learns in (e.g., "EN" for English)
+        words_in_target_lang: If True, words_input are in target_language. If False, they're in learning_language
+        image_dir: Directory to save images
+        audio_dir: Directory to save audio files
+    
+    Returns:
+        List of dicts with: {"front_text": ..., "back_text": ..., "image": ..., "audio_front": ..., "audio_back": ...}
     """
     if image_dir is None:
         image_dir = _default_image_dir()
     if audio_dir is None:
         audio_dir = _default_audio_dir()
 
+    # Get gTTS language codes
+    target_lang_code = _deepl_to_gtts_lang(target_language)
+    learning_lang_code = _deepl_to_gtts_lang(learning_language)
+
     results = []
-    for word in english_words:
-        try:
-            translation = translate_word(word, source, target)
-        except Exception:
-            translation = ""
+    for word in words_input:
+        if words_in_target_lang:
+            # Word is in target language, translate to learning language for back
+            front_text = word
+            try:
+                back_text = translate_word(word, target_language, learning_language)
+            except Exception:
+                back_text = ""
+            search_term = word
+            search_lang = target_language
+        else:
+            # Word is in learning language, translate to target language for front
+            back_text = word
+            try:
+                front_text = translate_word(word, learning_language, target_language)
+            except Exception:
+                front_text = ""
+            search_term = front_text or word
+            search_lang = target_language
 
-        # Use the translated term (target language) for searching but keep the
-        # saved filename in the source language to make file mapping obvious.
-        search_term = translation or word
+        # Download image based on the word/translation
         image_filename = f"{word.replace(' ', '_').replace('/', '_')}.jpeg"
-        image_path = download_image(search_term, image_filename, image_dir=image_dir, search_lang=target)
+        image_path = download_image(search_term, image_filename, image_dir=image_dir, search_lang=search_lang)
 
-        audio_front_filename = f"{(translation or word).replace(' ', '_').replace('/', '_')}_fr.mp3"
-        audio_front_path = generate_audio(translation, audio_front_filename, lang='fr', audio_dir=audio_dir)
+        # Generate audio: front in target language, back in learning language
+        audio_front_filename = f"{(front_text or word).replace(' ', '_').replace('/', '_')}_{target_language.lower()}.mp3"
+        audio_front_path = generate_audio(front_text, audio_front_filename, lang=target_lang_code, audio_dir=audio_dir)
 
-        audio_back_filename = f"{word.replace(' ', '_').replace('/', '_')}_en.mp3"
-        audio_back_path = generate_audio(word, audio_back_filename, lang='en', audio_dir=audio_dir)
+        audio_back_filename = f"{(back_text or word).replace(' ', '_').replace('/', '_')}_{learning_language.lower()}.mp3"
+        audio_back_path = generate_audio(back_text, audio_back_filename, lang=learning_lang_code, audio_dir=audio_dir)
 
         results.append({
-            "word": word,
-            "translation": translation,
+            "front_text": front_text,
+            "back_text": back_text,
             "image": image_path,
             "audio_front": audio_front_path,
             "audio_back": audio_back_path,
@@ -189,8 +215,8 @@ def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_c
                 audio_front_filename = os.path.basename(card["audio_front"]) if card["audio_front"] else ""
                 audio_back_filename = os.path.basename(card["audio_back"]) if card["audio_back"] else ""
                 writer.writerow([
-                    card["translation"],
-                    card["word"],
+                    card["front_text"],
+                    card["back_text"],
                     "",  # Blank column for tags
                     image_filename,
                     "",  # Blank column for back image
