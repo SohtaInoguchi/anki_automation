@@ -85,6 +85,16 @@ def generate_audio(text: str, filename: str, lang: str, audio_dir: str = ".") ->
         return ""
 
 
+def _deepl_to_gtts_lang(deepl_lang: str) -> str:
+    """Map DeepL language code to gTTS language code."""
+    mapping = {
+        "EN": "en",
+        "FR": "fr",
+        # extend as needed in future
+    }
+    return mapping.get(deepl_lang.upper(), "en")
+
+
 def _is_running_on_render() -> bool:
     """Detect if running in Render by checking common Render env vars."""
     render_env_vars = [
