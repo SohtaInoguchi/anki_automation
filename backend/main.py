@@ -32,7 +32,7 @@ class PingRequest(BaseModel):
 class GenerateCardsRequest(BaseModel):
     words: list[str]
     target_language: str = "FR"
-    learning_language: str = "EN"
+    learning_language: str = "EN-GB"
     words_in_target_lang: bool = False
 
 @app.get("/ping")

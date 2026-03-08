@@ -20,7 +20,7 @@ def _get_deepl_client():
     return deepl.DeepLClient(DEEPL_API_KEY)
 
 
-def translate_word(word: str, source: str = "EN", target: str = "FR") -> str:
+def translate_word(word: str, source: str = "EN-GB", target: str = "FR") -> str:
     """Translate a single word using DeepL and return the translated text."""
     try:
         client = _get_deepl_client()
@@ -98,7 +98,8 @@ def generate_audio(text: str, filename: str, lang: str, audio_dir: str = ".") ->
 def _deepl_to_gtts_lang(deepl_lang: str) -> str:
     """Map DeepL language code to gTTS language code."""
     mapping = {
-        "EN": "en",
+        "EN-GB": "en",
+        "EN-US": "en",
         "FR": "fr",
         # extend as needed in future
     }
@@ -138,13 +139,13 @@ def _default_audio_dir() -> str:
     return os.path.join(os.getcwd(), "audio")
 
 
-def generate_anki_cards(words_input: List[str], target_language: str = "FR", learning_language: str = "EN", words_in_target_lang: bool = False, image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
+def generate_anki_cards(words_input: List[str], target_language: str = "FR", learning_language: str = "EN-GB", words_in_target_lang: bool = False, image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
     """Generate translations, download images, and generate audio for flashcards.
     
     Args:
         words_input: List of words to create cards from
         target_language: Language the user is learning (e.g., "FR" for French)
-        learning_language: Language the user learns in (e.g., "EN" for English)
+        learning_language: Language the user learns in (e.g., "EN-GB" for British English)
         words_in_target_lang: If True, words_input are in target_language. If False, they're in learning_language
         image_dir: Directory to save images
         audio_dir: Directory to save audio files

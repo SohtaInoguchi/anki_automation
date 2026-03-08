@@ -7,7 +7,7 @@ function App() {
   const [cards, setCards] = useState([]);
   const [csvFile, setCsvFile] = useState(null);
   const [targetLanguage, setTargetLanguage] = useState("FR");
-  const [learningLanguage, setLearningLanguage] = useState("EN");
+  const [learningLanguage, setLearningLanguage] = useState("EN-GB");
   const [wordsInTargetLang, setWordsInTargetLang] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -181,14 +181,14 @@ function App() {
           <label>
             <strong>Language you want to learn:</strong>
             <select value={targetLanguage} onChange={(e) => setTargetLanguage(e.target.value)}>
-              <option value="EN">English</option>
+              <option value="EN-GB">English</option>
               <option value="FR">French</option>
             </select>
           </label>
           <label style={{ marginLeft: 20 }}>
             <strong>Language you learn in:</strong>
             <select value={learningLanguage} onChange={(e) => setLearningLanguage(e.target.value)}>
-              <option value="EN">English</option>
+              <option value="EN-GB">English</option>
               <option value="FR">French</option>
             </select>
           </label>
@@ -205,8 +205,8 @@ function App() {
           </label>
           <p style={{ fontSize: 12, color: "#666", marginTop: 5 }}>
             {wordsInTargetLang 
-              ? `Your words will be translated to ${learningLanguage === "EN" ? "English" : "French"}` 
-              : `Your words will be translated to ${targetLanguage === "EN" ? "English" : "French"}`
+              ? `Your words will be translated to ${learningLanguage.startsWith("EN") ? "English" : "French"}` 
+              : `Your words will be translated to ${targetLanguage.startsWith("EN") ? "English" : "French"}`
             }
           </p>
         </div>
@@ -240,10 +240,10 @@ function App() {
             <thead>
               <tr style={{ backgroundColor: "#f0f0f0" }}>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>
-                  Front ({targetLanguage === "EN" ? "English" : "French"})
+                  Front ({targetLanguage.startsWith("EN") ? "English" : "French"})
                 </th>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>
-                  Back ({learningLanguage === "EN" ? "English" : "French"})
+                  Back ({learningLanguage.startsWith("EN") ? "English" : "French"})
                 </th>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>Image</th>
                 <th style={{ border: "1px solid #ccc", padding: 8 }}>Audio Front</th>
