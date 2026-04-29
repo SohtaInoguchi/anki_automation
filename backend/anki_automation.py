@@ -20,13 +20,33 @@ def _get_deepl_client():
     return deepl.DeepLClient(DEEPL_API_KEY)
 
 
-def translate_word(word: str, source: str = "EN", target: str = "FR") -> str:
-    """Translate a single word using DeepL and return the translated text."""
-    client = _get_deepl_client()
-    result = client.translate_text(word, source_lang=source, target_lang=target)
-    # result may be an object; return its text representation
-    return str(result)
+def _normalize_deepl_lang(lang: str) -> str:
+    """Convert a possibly regional code (EN-GB/EN-US) to DeepL base code (EN, FR, etc.).
 
+    DeepL accepts only the root language for source_lang; targets can include region for
+    certain languages but our usage avoids regions. This helper strips off any suffix
+    after a hyphen.
+    """
+    return lang.split("-")[0].upper()
+
+
+def translate_word(word: str, source: str = "EN-GB", target: str = "FR") -> str:
+    """Translate a single word using DeepL and return the translated text."""
+    # DeepL requires base codes for source; target can be regional for some languages
+    source_base = _normalize_deepl_lang(source)
+    # For target, keep regional variants for languages that support them (like EN-GB/EN-US)
+    target_normalized = target if target.upper().startswith("EN-") else _normalize_deepl_lang(target)
+    try:
+        client = _get_deepl_client()
+        result = client.translate_text(word, source_lang=source_base, target_lang=target_normalized)
+        translated = str(result)
+        if not translated.strip():
+            print(f"Warning: DeepL returned empty translation for '{word}' ({source_base} -> {target_normalized})")
+            return ""
+        return translated
+    except Exception as e:
+        print(f"Error translating '{word}' from {source_base} to {target_normalized}: {type(e).__name__}: {e}")
+        return ""
 
 def download_image(query: str, filename: str, image_dir: str = ".", search_lang: str | None = None) -> str:
     """Download first image for `query` using SerpAPI and save to `image_dir/filename`.
@@ -60,6 +80,7 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
         img_data = response.content
         # Basic magic-number check for JPEG/PNG
         if not (img_data[:3] == b"\xff\xd8\xff" or img_data[:4] == b"\x89PNG"):
+            print(f"Warning: Downloaded data for '{query}' is not a valid JPEG/PNG image")
             return ""
 
         os.makedirs(image_dir, exist_ok=True)
@@ -67,7 +88,8 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
         with open(path, "wb") as handler:
             handler.write(img_data)
         return path
-    except Exception:
+    except Exception as e:
+        print(f"Error downloading image for '{query}': {type(e).__name__}: {e}")
         return ""
 
 
@@ -81,8 +103,20 @@ def generate_audio(text: str, filename: str, lang: str, audio_dir: str = ".") ->
         path = os.path.join(audio_dir, filename)
         tts.save(path)
         return path
-    except Exception:
+    except Exception as e:
+        print(f"Error generating audio for '{text}' in language '{lang}': {type(e).__name__}: {e}")
         return ""
+
+
+def _deepl_to_gtts_lang(deepl_lang: str) -> str:
+    """Map DeepL language code to gTTS language code."""
+    mapping = {
+        "EN-GB": "en",
+        "EN-US": "en",
+        "FR": "fr",
+        # extend as needed in future
+    }
+    return mapping.get(deepl_lang.upper(), "en")
 
 
 def _is_running_on_render() -> bool:
@@ -118,38 +152,72 @@ def _default_audio_dir() -> str:
     return os.path.join(os.getcwd(), "audio")
 
 
-def generate_anki_cards(english_words: List[str], source: str = "EN", target: str = "FR", image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
-    """Generate translations, download images (searched using the target-language translation), and generate audio for a list of English words.
-
-    Returns a list of dicts: {"word": ..., "translation": ..., "image": <filepath or "">, "audio_front": <filepath or "">, "audio_back": <filepath or "">}
+def generate_anki_cards(words_input: List[str], target_language: str = "FR", learning_language: str = "EN-GB", words_in_target_lang: bool = False, image_dir: str | None = None, audio_dir: str | None = None) -> List[Dict[str, str]]:
+    """Generate translations, download images, and generate audio for flashcards.
+    
+    Args:
+        words_input: List of words to create cards from
+        target_language: Language the user is learning (e.g., "FR" for French)
+        learning_language: Language the user learns in (e.g., "EN-GB" for British English)
+        words_in_target_lang: If True, words_input are in target_language. If False, they're in learning_language
+        image_dir: Directory to save images
+        audio_dir: Directory to save audio files
+    
+    Returns:
+        List of dicts with: {"front_text": ..., "back_text": ..., "image": ..., "audio_front": ..., "audio_back": ...}
     """
+    print(f"Generating {len(words_input)} cards: target_lang={target_language}, learning_lang={learning_language}, words_in_target={words_in_target_lang}")
+    
     if image_dir is None:
         image_dir = _default_image_dir()
     if audio_dir is None:
         audio_dir = _default_audio_dir()
 
+    # Get gTTS language codes
+    target_lang_code = _deepl_to_gtts_lang(target_language)
+    learning_lang_code = _deepl_to_gtts_lang(learning_language)
+
     results = []
-    for word in english_words:
-        try:
-            translation = translate_word(word, source, target)
-        except Exception:
-            translation = ""
+    for word in words_input:
+        if words_in_target_lang:
+            # Word is already in target language; translate to learning language for back
+            front_text = word
+            back_text = translate_word(word, target_language, learning_language)
+            if not back_text:
+                print(f"Warning: No translation available for '{word}' ({target_language} -> {learning_language})")
+                back_text = word  # fallback only for empty results, not exceptions
+            search_term = word
+            search_lang = _normalize_deepl_lang(target_language)
+        else:
+            # Word is in learning language; translate to target language for front
+            back_text = word
+            front_text = translate_word(word, learning_language, target_language)
+            if not front_text:
+                print(f"Warning: No translation available for '{word}' ({learning_language} -> {target_language})")
+                front_text = word  # fallback only for empty results, not exceptions
+            search_term = front_text or word
+            search_lang = _normalize_deepl_lang(target_language)
 
-        # Use the translated term (target language) for searching but keep the
-        # saved filename in the source language to make file mapping obvious.
-        search_term = translation or word
+        # Download image based on the word/translation
         image_filename = f"{word.replace(' ', '_').replace('/', '_')}.jpeg"
-        image_path = download_image(search_term, image_filename, image_dir=image_dir, search_lang=target)
+        image_path = download_image(search_term, image_filename, image_dir=image_dir, search_lang=search_lang)
 
-        audio_front_filename = f"{(translation or word).replace(' ', '_').replace('/', '_')}_fr.mp3"
-        audio_front_path = generate_audio(translation, audio_front_filename, lang='fr', audio_dir=audio_dir)
+        # Generate audio: front in target language, back in learning language
+        front_audio_lang = target_language
+        back_audio_lang = learning_language
 
-        audio_back_filename = f"{word.replace(' ', '_').replace('/', '_')}_en.mp3"
-        audio_back_path = generate_audio(word, audio_back_filename, lang='en', audio_dir=audio_dir)
+        front_audio_code = _deepl_to_gtts_lang(front_audio_lang)
+        back_audio_code = _deepl_to_gtts_lang(back_audio_lang)
+
+        audio_front_filename = f"{(front_text or word).replace(' ', '_').replace('/', '_')}_{front_audio_lang.lower()}.mp3"
+        audio_front_path = generate_audio(front_text, audio_front_filename, lang=front_audio_code, audio_dir=audio_dir)
+
+        audio_back_filename = f"{(back_text or word).replace(' ', '_').replace('/', '_')}_{back_audio_lang.lower()}.mp3"
+        audio_back_path = generate_audio(back_text, audio_back_filename, lang=back_audio_code, audio_dir=audio_dir)
 
         results.append({
-            "word": word,
-            "translation": translation,
+            "front_text": front_text,
+            "back_text": back_text,
             "image": image_path,
             "audio_front": audio_front_path,
             "audio_back": audio_back_path,
@@ -189,8 +257,8 @@ def export_cards_to_csv(cards: List[Dict[str, str]], csv_filepath: str = "anki_c
                 audio_front_filename = os.path.basename(card["audio_front"]) if card["audio_front"] else ""
                 audio_back_filename = os.path.basename(card["audio_back"]) if card["audio_back"] else ""
                 writer.writerow([
-                    card["translation"],
-                    card["word"],
+                    card["front_text"],
+                    card["back_text"],
                     "",  # Blank column for tags
                     image_filename,
                     "",  # Blank column for back image

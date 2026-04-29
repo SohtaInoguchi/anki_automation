@@ -31,8 +31,9 @@ class PingRequest(BaseModel):
 
 class GenerateCardsRequest(BaseModel):
     words: list[str]
-    source: str = "EN"
-    target: str = "FR"
+    target_language: str = "FR"
+    learning_language: str = "EN-GB"
+    words_in_target_lang: bool = False
 
 @app.get("/ping")
 def ping():
@@ -50,7 +51,12 @@ def ping(req: PingRequest):
 def generate_cards(req: GenerateCardsRequest):
     """Generate Anki cards with translations and images."""
     try:
-        cards = generate_anki_cards(req.words, source=req.source, target=req.target)
+        cards = generate_anki_cards(
+            req.words, 
+            target_language=req.target_language, 
+            learning_language=req.learning_language,
+            words_in_target_lang=req.words_in_target_lang
+        )
         
         # Generate CSV file
         image_dir = _default_image_dir()
