@@ -6,12 +6,23 @@ from serpapi import GoogleSearch
 from gtts import gTTS
 import requests
 from typing import List, Dict
+import unicodedata
 
 # Load local .env when present (harmless on Render where env vars are provided)
 load_dotenv()
 
 DEEPL_API_KEY = os.getenv("DEEPL_API_KEY")
 SERP_API_KEY = os.getenv("SERP_API_KEY")
+
+
+def _remove_diacritics(text: str) -> str:
+    """Remove diacritics from text (e.g., â -> a, é -> e).
+    
+    Uses NFD (Canonical Decomposition) to separate base characters from combining marks,
+    then filters out the combining marks.
+    """
+    nfd = unicodedata.normalize('NFD', text)
+    return ''.join(char for char in nfd if unicodedata.category(char) != 'Mn')
 
 
 def _get_deepl_client():
@@ -199,7 +210,7 @@ def generate_anki_cards(words_input: List[str], target_language: str = "FR", lea
             search_lang = _normalize_deepl_lang(target_language)
 
         # Download image based on the word/translation
-        image_filename = f"{word.replace(' ', '_').replace('/', '_')}.jpeg"
+        image_filename = f"{_remove_diacritics(word).replace(' ', '_').replace('/', '_')}.jpeg"
         image_path = download_image(search_term, image_filename, image_dir=image_dir, search_lang=search_lang)
 
         # Generate audio: front in target language, back in learning language
@@ -209,10 +220,10 @@ def generate_anki_cards(words_input: List[str], target_language: str = "FR", lea
         front_audio_code = _deepl_to_gtts_lang(front_audio_lang)
         back_audio_code = _deepl_to_gtts_lang(back_audio_lang)
 
-        audio_front_filename = f"{(front_text or word).replace(' ', '_').replace('/', '_')}_{front_audio_lang.lower()}.mp3"
+        audio_front_filename = f"{_remove_diacritics(front_text or word).replace(' ', '_').replace('/', '_')}_{front_audio_lang.lower()}.mp3"
         audio_front_path = generate_audio(front_text, audio_front_filename, lang=front_audio_code, audio_dir=audio_dir)
 
-        audio_back_filename = f"{(back_text or word).replace(' ', '_').replace('/', '_')}_{back_audio_lang.lower()}.mp3"
+        audio_back_filename = f"{_remove_diacritics(back_text or word).replace(' ', '_').replace('/', '_')}_{back_audio_lang.lower()}.mp3"
         audio_back_path = generate_audio(back_text, audio_back_filename, lang=back_audio_code, audio_dir=audio_dir)
 
         results.append({
