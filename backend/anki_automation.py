@@ -85,6 +85,27 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
+
+        max_jpeg_bytes = 2 * 1024 * 1024
+        is_probable_jpeg = image_url.lower().endswith((".jpg", ".jpeg"))
+
+        # Use HEAD to avoid downloading a large JPEG if size is known upfront.
+        try:
+            head_resp = requests.head(image_url, headers=headers, timeout=10, allow_redirects=True)
+            if head_resp.status_code == 200:
+                content_type = head_resp.headers.get("Content-Type", "").lower()
+                content_length = head_resp.headers.get("Content-Length")
+                if is_probable_jpeg or content_type.startswith("image/jpeg"):
+                    if content_length is not None:
+                        try:
+                            if int(content_length) >= max_jpeg_bytes:
+                                print(f"Skipping JPEG download for '{query}': image size {content_length} bytes >= 2 MB")
+                                return ""
+                        except ValueError:
+                            pass
+        except requests.RequestException:
+            pass
+
         response = requests.get(image_url, headers=headers, timeout=10)
         response.raise_for_status()
 
@@ -92,6 +113,10 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
         # Basic magic-number check for JPEG/PNG
         if not (img_data[:3] == b"\xff\xd8\xff" or img_data[:4] == b"\x89PNG"):
             print(f"Warning: Downloaded data for '{query}' is not a valid JPEG/PNG image")
+            return ""
+
+        if img_data[:3] == b"\xff\xd8\xff" and len(img_data) >= max_jpeg_bytes:
+            print(f"Skipping JPEG download for '{query}': downloaded image size {len(img_data)} bytes >= 2 MB")
             return ""
 
         os.makedirs(image_dir, exist_ok=True)
