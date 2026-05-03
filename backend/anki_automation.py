@@ -87,24 +87,23 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
         }
 
         max_jpeg_bytes = 2 * 1024 * 1024
-        is_probable_jpeg = image_url.lower().endswith((".jpg", ".jpeg"))
 
-        # Use HEAD to avoid downloading a large JPEG if size is known upfront.
+        # Use HEAD to avoid downloading a large image if size is known upfront.
         try:
             head_resp = requests.head(image_url, headers=headers, timeout=10, allow_redirects=True)
             print(f"[DEBUG] HEAD request for '{query}': status={head_resp.status_code}")
             if head_resp.status_code == 200:
                 content_type = head_resp.headers.get("Content-Type", "").lower()
                 content_length = head_resp.headers.get("Content-Length")
-                print(f"[DEBUG] Content-Type={content_type}, Content-Length={content_length}, is_probable_jpeg={is_probable_jpeg}")
-                if is_probable_jpeg or content_type.startswith("image/jpeg"):
-                    if content_length is not None:
-                        try:
-                            if int(content_length) >= max_jpeg_bytes:
-                                print(f"Skipping JPEG download for '{query}': image size {content_length} bytes >= 2 MB")
-                                return ""
-                        except ValueError:
-                            pass
+                print(f"[DEBUG] Content-Type={content_type}, Content-Length={content_length}")
+                # Skip if any image type is large
+                if content_length is not None and (content_type.startswith("image/jpeg") or content_type.startswith("image/png")):
+                    try:
+                        if int(content_length) >= max_jpeg_bytes:
+                            print(f"Skipping image download for '{query}': image size {content_length} bytes >= 2 MB (type: {content_type})")
+                            return ""
+                    except ValueError:
+                        pass
         except requests.RequestException as e:
             print(f"[DEBUG] HEAD request failed for '{query}': {e}")
             pass
@@ -124,8 +123,9 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
             print(f"Warning: Downloaded data for '{query}' is not a valid JPEG/PNG image")
             return ""
 
-        if img_data[:3] == b"\xff\xd8\xff" and len(img_data) >= max_jpeg_bytes:
-            print(f"Skipping JPEG download for '{query}': downloaded image size {len(img_data)} bytes >= 2 MB")
+        # Skip if large image (JPEG or PNG) slipped through
+        if len(img_data) >= max_jpeg_bytes:
+            print(f"Skipping image download for '{query}': downloaded image size {len(img_data)} bytes >= 2 MB")
             return ""
 
         os.makedirs(image_dir, exist_ok=True)
