@@ -92,9 +92,11 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
         # Use HEAD to avoid downloading a large JPEG if size is known upfront.
         try:
             head_resp = requests.head(image_url, headers=headers, timeout=10, allow_redirects=True)
+            print(f"[DEBUG] HEAD request for '{query}': status={head_resp.status_code}")
             if head_resp.status_code == 200:
                 content_type = head_resp.headers.get("Content-Type", "").lower()
                 content_length = head_resp.headers.get("Content-Length")
+                print(f"[DEBUG] Content-Type={content_type}, Content-Length={content_length}, is_probable_jpeg={is_probable_jpeg}")
                 if is_probable_jpeg or content_type.startswith("image/jpeg"):
                     if content_length is not None:
                         try:
@@ -103,14 +105,21 @@ def download_image(query: str, filename: str, image_dir: str = ".", search_lang:
                                 return ""
                         except ValueError:
                             pass
-        except requests.RequestException:
+        except requests.RequestException as e:
+            print(f"[DEBUG] HEAD request failed for '{query}': {e}")
             pass
 
+        print(f"[DEBUG] Downloading full image for '{query}'...")
         response = requests.get(image_url, headers=headers, timeout=10)
         response.raise_for_status()
 
         img_data = response.content
+        print(f"[DEBUG] Downloaded {len(img_data)} bytes for '{query}'")
+        
         # Basic magic-number check for JPEG/PNG
+        magic_bytes = img_data[:4].hex() if len(img_data) >= 4 else img_data.hex()
+        print(f"[DEBUG] Magic bytes for '{query}': {magic_bytes}")
+        
         if not (img_data[:3] == b"\xff\xd8\xff" or img_data[:4] == b"\x89PNG"):
             print(f"Warning: Downloaded data for '{query}' is not a valid JPEG/PNG image")
             return ""
